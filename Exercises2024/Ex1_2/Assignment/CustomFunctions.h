@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <string>
-#include <utility>
+#include <utility> 
 
 // We declare the functions
 std::vector<std::pair<double, double>> readData(const std::string& filename);
@@ -17,6 +17,6 @@ void Print(const std::vector<std::pair<double, double>>& data, const std::vector
 void Print(const std::pair<std::pair<double, double>,std::pair<double, double>>& lineParams);
 void Print(const std::string& message);
 
-double calcXY(double x, double y);
+double calcXY(double x, double y); 
 
-#endif
+#endif 

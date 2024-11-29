@@ -94,7 +94,7 @@ ofstream outFile("best_fit_line.txt");
 
     }
 
-return 0;
+return 0; 
 
 }
 
