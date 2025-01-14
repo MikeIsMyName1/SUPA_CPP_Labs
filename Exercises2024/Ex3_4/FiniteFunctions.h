@@ -1,3 +1,6 @@
+// Michael McFadden
+// 09/12
+
 #include <string>
 #include <vector>
 #include "gnuplot-iostream.h"
@@ -24,7 +27,11 @@ public:
   virtual void printInfo(); //Dump parameter info about the current function (Overridable)
   virtual double callFunction(double x); //Call the function with value x (Overridable)
 
-  //Protected members can be accessed by child classes but not users
+  // Adding two new functions for the Metropolis algorithm into public section of the base class, to be inherited by the custom classes
+  void synthesise(); // Will create the synthetic data
+  void plotSynth(); // Will automatically call synthesise and then run plotData on the newly updated m_synthData
+
+//Protected members can be accessed by child classes but not users
 protected:
   double m_RMin;
   double m_RMax;
@@ -43,7 +50,51 @@ protected:
   std::vector< std::pair<double, double> > makeHist(std::vector<double> &points, int Nbins); //Helper function to turn data points into histogram with Nbins
   void checkPath(std::string outstring); //Helper function to ensure data and png paths are correct
   void generatePlot(Gnuplot &gp); 
+
+  // We add a new protected member variable called which will be updated by our "synthesise" function
+  std::vector<double> m_synthData;
   
 private:
   double invxsquared(double x); //The default functional form
+};
+
+// We define an inherited class for the normal distribution
+
+class NormDist : public FiniteFunction{
+
+public:
+  NormDist();
+  NormDist(double range_min, double range_max, std::string outfile); // Constructors
+  double callFunction(double x) override; // Overriding callFunction
+
+private:
+  double NormalFunction(double x); // Defining new function for callFunction to call
+
+};
+
+// And similarly for the two other distribution types
+
+class cauchyDist : public FiniteFunction{
+
+public:
+  cauchyDist();
+  cauchyDist(double range_min, double range_max, std::string outfile); // Constructors
+  double callFunction(double x) override; // Overriding callFunction
+
+private:
+  double CauchyFunction(double x); // Defining new function for callFunction to call
+
+};
+
+
+class crystalDist : public FiniteFunction{
+
+public:
+  crystalDist();
+  crystalDist(double range_min, double range_max, std::string outfile); // Constructors
+  double callFunction(double x) override; // Overriding callFunction
+
+private:
+  double CrystalFunction(double x); // Defining new function for callFunction to call
+
 };

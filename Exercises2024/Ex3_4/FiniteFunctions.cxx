@@ -1,12 +1,20 @@
+// Michael McFadden
+// 09/12
+
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
+#include <random>
+#include <algorithm>
 #include "FiniteFunctions.h"
 #include <filesystem> //To check extensions in a nice way
 
 #include "gnuplot-iostream.h" //Needed to produce plots (not part of the course) 
 
 using std::filesystem::path;
+
+const double pi = 3.14159265358979323846;
 
 //Empty constructor
 FiniteFunction::FiniteFunction(){
@@ -61,10 +69,21 @@ double FiniteFunction::callFunction(double x) {return this->invxsquared(x);}; //
 Integration by hand (output needed to normalise function when plotting)
 ###################
 */ 
+
+// My custom integral
 double FiniteFunction::integrate(int Ndiv){ //private
-  //ToDo write an integrator
-  return -99;  
+  double elementWidth = (m_RMax-m_RMin)/(double)Ndiv;
+  double x = m_RMin;
+  double integralValue = 0;
+
+  for(int i=0; i<Ndiv; i++){
+	  integralValue += elementWidth*callFunction(x);
+	  x += elementWidth;
+	  }
+return integralValue;
 }
+
+
 double FiniteFunction::integral(int Ndiv) { //public
   if (Ndiv <= 0){
     std::cout << "Invalid number of divisions for integral, setting Ndiv to 1000" <<std::endl;
@@ -234,4 +253,131 @@ void FiniteFunction::generatePlot(Gnuplot &gp){
     gp << "plot '-' with points ps 2 lc rgb 'blue' title 'sampled data'\n";
     gp.send1d(m_samples);
   }
+}
+
+
+// We now need to define inherited classes which each add a new mathematical function, and override callFunction to call that new one instead
+// First we define the normal distribution class
+
+NormDist::NormDist(){
+  m_RMin = -5.0;
+  m_RMax = 5.0;
+  this->checkPath("DefaultFunction");
+  m_Integral = NULL;
+}
+
+NormDist::NormDist(double range_min, double range_max, std::string outfile){
+  m_RMin = range_min;
+  m_RMax = range_max;
+  m_Integral = NULL;
+  this->checkPath(outfile); //Use provided string to name output files
+}
+
+double NormDist::callFunction(double x){return this->NormalFunction(x);}; //(overridden)
+
+double NormDist::NormalFunction(double x){
+  double sigma = 1;
+  double mu = 2;
+  return (1 / (sigma*std::sqrt(2*pi)))*exp((-0.5)*(std::pow(((x - mu) / sigma),2)));
+}
+
+// Then the Cauchy-Lorentz distribution
+
+cauchyDist::cauchyDist(){
+  m_RMin = -5.0;
+  m_RMax = 5.0;
+  this->checkPath("DefaultFunction");
+  m_Integral = NULL;
+}
+
+cauchyDist::cauchyDist(double range_min, double range_max, std::string outfile){
+  m_RMin = range_min;
+  m_RMax = range_max;
+  m_Integral = NULL;
+  this->checkPath(outfile); //Use provided string to name output files
+}
+
+double cauchyDist::callFunction(double x){return this->CauchyFunction(x);}; //(overridden)
+
+double cauchyDist::CauchyFunction(double x){
+  double gamma = 0.8;
+  double x0 = 2;
+  return 1 / (pi*gamma*(1+std::pow(((x-x0)/gamma),2)));
+}
+
+
+// And finally the Negative Crystal Ball distribution
+
+crystalDist::crystalDist(){
+  m_RMin = -5.0;
+  m_RMax = 5.0;
+  this->checkPath("DefaultFunction");
+  m_Integral = NULL;
+}
+
+crystalDist::crystalDist(double range_min, double range_max, std::string outfile){
+  m_RMin = range_min;
+  m_RMax = range_max;
+  m_Integral = NULL;
+  this->checkPath(outfile); //Use provided string to name output files
+}
+
+double crystalDist::callFunction(double x){return this->CrystalFunction(x);}; //(overridden)
+
+double crystalDist::CrystalFunction(double x){
+
+  double xbar = 2;
+  double sigma = 0.8;
+  double alpha = 2;
+  double n = 2;
+
+  double A = std::pow((n/alpha),n)*exp(-(std::pow(alpha,2)/2.0));
+  double B = (n/alpha)-alpha;
+  double C = (n/alpha)*(1/(n-1))*exp(-(std::pow(alpha,2)/2.0));
+  double D = sqrt(pi/2.0)*(1+std::erf(alpha/(sqrt(2))));
+  double N = 1/(sigma*(C+D));
+
+  if(x > -(alpha*sigma)+xbar){
+    return N*exp(-(std::pow((x-xbar),2))/(2*std::pow(sigma,2)));
+  }
+  else{
+    return N*A*std::pow(B-((x-xbar)/(sigma)),-n);
+  }
+
+}
+
+
+// Synthetic data functions (defined in the base class to be inherited by all custom classes)
+
+// plotSynth calls synthesise to update m_synthData, then uses this newly updated value in plotData
+void FiniteFunction::plotSynth(){
+  synthesise();
+  plotData(m_synthData,50,false);
+}
+
+// synthesise simply generates synthetic data via the Metropolis algorithm
+void FiniteFunction::synthesise(){
+  // We generate a random seed, to then put into a pseudo-random number generator, to generate a pseudo-random number, to pick out a datapoint from a uniform real distribution
+  std::random_device rd; // Random number; it's apparently non-deterministic but also not ideal for distributions
+  std::mt19937 gen(rd()); // Generator which calls the value of rd to use it as a seed for the mt19937 generator, giving us a pseudo-random number
+  std::uniform_real_distribution<> uniDist(-10,10); // Defining a generator for a distribution of reals (defaults to doubles); generates a fresh distribution each time it's called
+  std::uniform_real_distribution<> uniDistMini(0,1); // Defining a similar generator, but between 0 and 1, 
+  std::vector<double> synthData; // Defining a vector to hold our synthetic data
+
+  double x = uniDist(gen); // Metropolis Algorithm Step 1: Random pick from the distribution of reals
+
+  for(int i=0;i<10000;i++){
+
+    std::normal_distribution<> normalDist(x,1.0); // Metropolis Algorithm Step 2: Normal distribution around x with standard deviation just set to 1.0 for simplicity
+    double y = normalDist(gen); // Using gen as a seed to pick a random value from the normal distribution around x
+
+    double A = std::min((callFunction(y)/callFunction(x)),1.0); // Metropolis Algorithm Step 3: Minimum of my function of y over that of x, versus 1
+
+    double T = uniDistMini(gen); // Metropolis Algorithm Steps 4+5: Generating a random value T between 0 and 1 and comparing it to A - if T is lower, we accept y and set x to y
+    if(T<A){
+      x = y;
+    }
+    synthData.push_back(x); // Adding the selected datapoint to the vector of synthetic data
+  }
+  m_synthData = synthData; // Setting m_synthData to this vector to be used by plotData
 }
